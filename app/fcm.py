@@ -1,6 +1,6 @@
-from firebase_admin import messaging, credentials, initialize_app
-import firebase_admin
 import os
+import firebase_admin
+from firebase_admin import credentials, messaging
 
 # Inicializa Firebase solo una vez
 if not firebase_admin._apps:
@@ -10,17 +10,25 @@ if not firebase_admin._apps:
             "config/firebase/mensajeriaconnotis-firebase-adminsdk-fbsvc-89af2d4e8c.json"
         )
     )
-    initialize_app(cred)
+    firebase_admin.initialize_app(cred)
 
-async def send_notification(title, body, token=None, topic="chat_general"):
-    message = messaging.Message(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
-        token=token,
-        topic=topic if token is None else None
-    )
-    response = messaging.send(message)
-    print("Notificación enviada:", response)
-    return response
+def send_notification(title, body):
+    from app.main import user_tokens  # Importa aquí para evitar import circular
+    tokens = list(user_tokens.values())
+    print(f"[FCM] Enviando notificación a tokens: {tokens}")
+    if not tokens:
+        print("[FCM] No hay tokens registrados.")
+        return
+    for token in tokens:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            token=token,
+        )
+        try:
+            response = messaging.send(message)
+            print(f"[FCM] Notificación enviada a {token}: {response}")
+        except Exception as e:
+            print(f"[FCM] Error al enviar a {token}: {e}")
